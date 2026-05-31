@@ -1,0 +1,12 @@
+{
+  "name": "my-ai-podcast-template",
+  "version": "1.0.0",
+  "description": "AI News Podcast Template for Autonomous Agents",
+  "scripts": {
+    "format": "prettier --write feed.xml"
+  },
+  "devDependencies": {
+    "@prettier/plugin-xml": "^3.4.2",
+    "prettier": "^3.0.0"
+  }
+}

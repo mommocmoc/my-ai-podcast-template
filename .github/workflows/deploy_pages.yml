@@ -1,0 +1,77 @@
+name: Deploy Podcast to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'feed.xml'
+      - 'cover.png'
+      - 'audio/**'
+      - 'config.yaml'
+  workflow_dispatch: # 수동 실행 기능 제공
+
+# GITHUB_TOKEN에 쓰기 권한을 주어 gh-pages 브랜치에 푸시할 수 있게 합니다.
+permissions:
+  contents: write
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip' # pip 의존성 캐싱 활성화
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+
+      - name: Validate Podcast Feed
+        run: |
+          python scripts/validate_feed.py
+
+      - name: Prepare Static Assets for Deploy
+        run: |
+          # 배포 전용 임시 디렉토리 생성
+          mkdir -p dist
+          
+          # XML 피드와 커버 이미지 복사
+          if [ -f feed.xml ]; then
+            cp feed.xml dist/
+          else
+            echo "[⚠️ Warning] feed.xml 파일이 존재하지 않아 복사를 건너뜁니다."
+          fi
+          
+          if [ -f cover.png ]; then
+            cp cover.png dist/
+          else
+            echo "[⚠️ Warning] cover.png 파일이 존재하지 않아 복사를 건너뜁니다."
+          fi
+          
+          # 오디오 파일들 복사
+          if [ -d audio ] && [ "$(ls -A audio 2>/dev/null)" ]; then
+            mkdir -p dist/audio
+            cp -r audio/* dist/audio/
+          else
+            echo "[ℹ️ Info] audio 디렉토리가 비어있거나 존재하지 않아 복사를 건너뜁니다."
+          fi
+
+      - name: Deploy to GitHub Pages (gh-pages branch)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
+          force_orphan: false # 이전 커밋 히스토리를 유지하여 점진적 배포 유도
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: "Deploy podcast assets to GitHub Pages (Automatic)"
